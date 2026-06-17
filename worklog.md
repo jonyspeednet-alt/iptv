@@ -38,4 +38,4 @@ Stage Summary:
 - New features: M3U import, PiP, theme toggle, better error recovery
 - No compilation errors, server responds with 200
 -
-- Updated: Trigger GitHub Pages deploy
+- Updated: Trigger GitHub Pages deploy (workflow fixed)
