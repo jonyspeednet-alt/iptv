@@ -37,3 +37,5 @@ Stage Summary:
 - 48 channels across 9 categories (up from 43 across 7)
 - New features: M3U import, PiP, theme toggle, better error recovery
 - No compilation errors, server responds with 200
+-
+- Updated: Trigger GitHub Pages deploy
