@@ -71,6 +71,26 @@ function IconWifiOff(props: React.SVGProps<SVGSVGElement>) {
 function IconAlertCircle(props: React.SVGProps<SVGSVGElement>) {
   return <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>;
 }
+function IconBookmark(props: React.SVGProps<SVGSVGElement>) {
+  return <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>;
+}
+function IconExternalLink(props: React.SVGProps<SVGSVGElement>) {
+  return <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>;
+}
+function IconPlus(props: React.SVGProps<SVGSVGElement>) {
+  return <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
+}
+function IconSmartphone(props: React.SVGProps<SVGSVGElement>) {
+  return <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/></svg>;
+}
+
+// ─── Types ─────────────────────────────────────────────────────────────────
+
+interface Bookmark {
+  id: number;
+  name: string;
+  url: string;
+}
 
 // ─── M3U Parser ────────────────────────────────────────────────────────────────
 
@@ -138,6 +158,16 @@ export default function Home() {
   const [clock, setClock] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showBookmarks, setShowBookmarks] = useState(false);
+  const [showAddBookmark, setShowAddBookmark] = useState(false);
+  const [newBookmarkName, setNewBookmarkName] = useState('');
+  const [newBookmarkUrl, setNewBookmarkUrl] = useState('');
+  const [installPrompt, setInstallPrompt] = useState<Event | null>(null);
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const saved = localStorage.getItem('iptv_bookmarks');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -395,8 +425,8 @@ export default function Home() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (showHelp || showImport) {
-        if (e.key === 'Escape') { setShowHelp(false); setShowImport(false); }
+      if (showHelp || showImport || showBookmarks || showAddBookmark) {
+        if (e.key === 'Escape') { setShowHelp(false); setShowImport(false); setShowBookmarks(false); setShowAddBookmark(false); }
         return;
       }
       if (e.target instanceof HTMLInputElement) return;
@@ -420,7 +450,72 @@ export default function Home() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showHelp, showImport, sidebarOpen, toggleFullscreen, prevChannel, nextChannel, retryChannel]);
+  }, [showHelp, showImport, showBookmarks, showAddBookmark, sidebarOpen, toggleFullscreen, prevChannel, nextChannel, retryChannel]);
+
+  // ─── PWA Install Prompt ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  // ─── Persist bookmarks ───────────────────────────────────────────────────
+
+  useEffect(() => {
+    localStorage.setItem('iptv_bookmarks', JSON.stringify(bookmarks));
+  }, [bookmarks]);
+
+  // ─── Handle install ──────────────────────────────────────────────────────
+
+  const handleInstall = useCallback(async () => {
+    if (!installPrompt) return;
+    (installPrompt as any).prompt();
+    const result = await (installPrompt as any).userChoice;
+    if (result.outcome === 'accepted') setInstallPrompt(null);
+  }, [installPrompt]);
+
+  // ─── Add bookmark ────────────────────────────────────────────────────────
+
+  const handleAddBookmark = useCallback(() => {
+    if (!newBookmarkName.trim() || !newBookmarkUrl.trim()) return;
+    let url = newBookmarkUrl.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    const newBm: Bookmark = {
+      id: Date.now(),
+      name: newBookmarkName.trim(),
+      url,
+    };
+    setBookmarks(prev => [...prev, newBm]);
+    setNewBookmarkName('');
+    setNewBookmarkUrl('');
+    setShowAddBookmark(false);
+  }, [newBookmarkName, newBookmarkUrl]);
+
+  // ─── Remove bookmark ─────────────────────────────────────────────────────
+
+  const handleRemoveBookmark = useCallback((id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setBookmarks(prev => prev.filter(b => b.id !== id));
+  }, []);
+
+  // ─── Default bookmark ────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (bookmarks.length === 0) {
+      const defaultBm: Bookmark = {
+        id: Date.now(),
+        name: 'StreamVault TV',
+        url: 'https://jonyspeednet-alt.github.io/iptv/',
+      };
+      setBookmarks([defaultBm]);
+    }
+  }, []); // only on mount
 
   // ─── Auto-hide controls ────────────────────────────────────────────────────
 
@@ -587,6 +682,14 @@ export default function Home() {
             <span className="text-white/60 text-sm font-mono ml-2">{clock}</span>
             <button onClick={() => setIsDark(p => !p)} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white" aria-label="Toggle theme">
               {isDark ? <IconSun /> : <IconMoon />}
+            </button>
+            {installPrompt && (
+              <button onClick={handleInstall} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600/30 hover:bg-cyan-500/40 text-cyan-300 transition-colors text-xs font-medium" aria-label="Install app">
+                <IconSmartphone /> Install
+              </button>
+            )}
+            <button onClick={() => setShowBookmarks(p => !p)} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white" aria-label="Bookmarks">
+              <IconBookmark />
             </button>
             <button onClick={() => setShowImport(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white" aria-label="Import M3U">
               <IconUpload />
@@ -797,6 +900,100 @@ export default function Home() {
           className="absolute inset-0 z-35 bg-black/40 md:bg-black/20"
           onClick={() => setSidebarOpen(false)}
         />
+      )}
+
+      {/* ─── Bookmarks Panel ──────────────────────────────────────────────── */}
+      {showBookmarks && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setShowBookmarks(false)}>
+          <div className="bg-gray-900 border border-white/10 rounded-2xl p-6 w-96 max-w-[90vw] shadow-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-bold text-lg flex items-center gap-2"><IconBookmark /> Quick Launch</h3>
+              <button onClick={() => setShowBookmarks(false)} className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white"><IconX /></button>
+            </div>
+            {bookmarks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <IconBookmark className="text-white/10 mb-3" width={40} height={40} />
+                <p className="text-white/30 text-sm">No bookmarks yet</p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto space-y-1.5 mb-4" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+                {bookmarks.map(bm => (
+                  <div key={bm.id} className="flex items-center gap-2 bg-white/5 hover:bg-white/10 rounded-xl px-3 py-2.5 group transition-colors">
+                    <IconExternalLink className="text-cyan-400 shrink-0" />
+                    <a
+                      href={bm.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 min-w-0 text-white/80 hover:text-cyan-300 text-sm font-medium truncate transition-colors"
+                    >
+                      {bm.name}
+                    </a>
+                    <span className="text-white/20 text-[10px] truncate max-w-[100px] hidden sm:block">{bm.url}</span>
+                    <button
+                      onClick={(e) => handleRemoveBookmark(bm.id, e)}
+                      className="p-1 rounded hover:bg-red-500/20 text-white/20 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                      aria-label={`Remove ${bm.name}`}
+                    >
+                      <IconX />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => setShowAddBookmark(true)}
+              className="flex items-center justify-center gap-2 w-full py-2.5 bg-cyan-600/20 hover:bg-cyan-500/30 text-cyan-300 rounded-xl transition-colors text-sm font-medium border border-cyan-500/20"
+            >
+              <IconPlus /> Add Bookmark
+            </button>
+            <p className="text-white/20 text-[10px] text-center mt-2">
+              Smart TV browser e site open korar por save kore rakhte add bookmark korun
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Add Bookmark Modal ────────────────────────────────────────────── */}
+      {showAddBookmark && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setShowAddBookmark(false)}>
+          <div className="bg-gray-900 border border-white/10 rounded-2xl p-6 w-96 max-w-[90vw] shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-bold text-lg">Add Bookmark</h3>
+              <button onClick={() => setShowAddBookmark(false)} className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white"><IconX /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-white/50 text-xs mb-1 block">Name</label>
+                <input
+                  type="text"
+                  value={newBookmarkName}
+                  onChange={(e) => setNewBookmarkName(e.target.value)}
+                  placeholder="My Site"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/30 transition-colors"
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddBookmark()}
+                />
+              </div>
+              <div>
+                <label className="text-white/50 text-xs mb-1 block">URL</label>
+                <input
+                  type="url"
+                  value={newBookmarkUrl}
+                  onChange={(e) => setNewBookmarkUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/30 transition-colors"
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddBookmark()}
+                />
+              </div>
+              <button
+                onClick={handleAddBookmark}
+                disabled={!newBookmarkName.trim() || !newBookmarkUrl.trim()}
+                className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:bg-white/10 disabled:text-white/30 text-white rounded-xl transition-colors text-sm font-medium"
+              >
+                Save Bookmark
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ─── Import Modal ──────────────────────────────────────────────────── */}
