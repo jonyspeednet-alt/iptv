@@ -13,18 +13,5 @@ self.addEventListener('fetch', (e) => {
   const path = '/' + parts.join('/') + (url.search || '');
   const target = protocol + '://' + host + path;
 
-  e.respondWith((async () => {
-    try {
-      const resp = await fetch(target, { mode: 'cors' });
-      const headers = new Headers(resp.headers);
-      headers.set('Access-Control-Allow-Origin', '*');
-      return new Response(resp.body, {
-        status: resp.status,
-        statusText: resp.statusText,
-        headers,
-      });
-    } catch (err) {
-      return new Response('Proxy error', { status: 502 });
-    }
-  })());
+  e.respondWith(fetch(target).catch(() => new Response('Proxy error', { status: 502 })));
 });

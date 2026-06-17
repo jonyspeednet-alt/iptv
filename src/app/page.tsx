@@ -128,13 +128,13 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamTryCount, setStreamTryCount] = useState(0);
+  const [copied, setCopied] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [showOSD, setShowOSD] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [isPiP, setIsPiP] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [clock, setClock] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -193,22 +193,6 @@ export default function Home() {
     setFilteredChannels(filtered);
   }, [channels, searchQuery, activeCategory, favorites]);
 
-  // ─── Service Worker registration ─────────────────────────────────────────────
-
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/iptv/sw.js').catch(() => {});
-    }
-  }, []);
-
-  // ─── Proxy helper ────────────────────────────────────────────────────────────
-
-  const toProxyUrl = useCallback((url: string) => {
-    if (!url.startsWith('http:')) return url;
-    const u = new URL(url);
-    return `/iptv/proxy/${u.protocol.slice(0, -1)}/${u.host}${u.pathname}${u.search}`;
-  }, []);
-
   // ─── Play channel ────────────────────────────────────────────────────────────
 
   const playChannel = useCallback((channel: Channel, tryIndex = 0) => {
@@ -228,14 +212,25 @@ export default function Home() {
     const video = videoRef.current;
     const urls = [channel.url, ...(channel.fallbackUrls || [])];
     const currentUrl = urls[tryIndex] || urls[0];
-    const isHttp = currentUrl.startsWith('http:');
     const hasNativeHls = video.canPlayType('application/vnd.apple.mpegurl');
 
-    // Always use proxy URL for HTTP streams. SW intercepts if active; if not,
-    // HLS.js gets a 404 and retries via startLoad() until SW becomes available.
-    const streamUrl = isHttp ? toProxyUrl(currentUrl) : currentUrl;
+    // HTTP HLS streams: blocked as active mixed content on HTTPS pages.
+    // Try native HLS (Safari via passive mixed content) or show URL for external player.
+    if (currentUrl.startsWith('http:') && currentUrl.includes('.m3u8')) {
+      setIsLoading(false);
+      setError(null);
+      if (hasNativeHls) {
+        video.src = currentUrl;
+        video.play().catch(() => {});
+      } else {
+        setError('এই HTTP stream টি আপনার ব্রাউজারে HTTPS সাইট থেকে চালানো যাবে না।');
+      }
+      if (osdTimeoutRef.current) clearTimeout(osdTimeoutRef.current);
+      osdTimeoutRef.current = setTimeout(() => setShowOSD(false), 3000);
+      return;
+    }
 
-    if (streamUrl.includes('.m3u8')) {
+    if (currentUrl.includes('.m3u8')) {
       if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
@@ -244,7 +239,7 @@ export default function Home() {
           maxMaxBufferLength: 60,
         });
         hlsRef.current = hls;
-        hls.loadSource(streamUrl);
+        hls.loadSource(currentUrl);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           video.play().catch(() => {});
@@ -271,11 +266,11 @@ export default function Home() {
           }
         });
       } else if (hasNativeHls) {
-        video.src = streamUrl;
+        video.src = currentUrl;
         video.play().catch(() => {});
       }
     } else {
-      video.src = streamUrl;
+      video.src = currentUrl;
       video.play().catch(() => {});
     }
 
@@ -500,15 +495,40 @@ export default function Home() {
 
       {/* Error Overlay */}
       {error && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/60 gap-4">
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/60 gap-4 px-6">
           <IconAlertCircle className="text-red-400" />
-          <p className="text-red-300 text-lg font-medium">{error}</p>
-          <button
-            onClick={retryChannel}
-            className="flex items-center gap-2 px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors text-sm font-medium"
-          >
-            <IconRefresh /> Retry
-          </button>
+          <p className="text-red-300 text-lg font-medium text-center">{error}</p>
+          <div className="flex flex-wrap gap-3 justify-center mt-2">
+            {currentChannel?.url.startsWith('http:') && (
+              <>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(currentChannel.url);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors text-sm font-medium"
+                >
+                  {copied ? '✓ Copied!' : '📋 Copy URL'}
+                </button>
+                <button
+                  onClick={() => window.open(currentChannel.url, '_blank')}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors text-sm font-medium"
+                >
+                  ↗ Open in New Tab
+                </button>
+              </>
+            )}
+            <button
+              onClick={retryChannel}
+              className="flex items-center gap-2 px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              <IconRefresh /> Retry
+            </button>
+          </div>
+          <p className="text-white/50 text-xs text-center mt-2">
+            VLC/media player দিয়ে খুলতে URL টি Copy করে File → Open Network প্রবেশ করুন
+          </p>
         </div>
       )}
 
