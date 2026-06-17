@@ -194,9 +194,29 @@ export default function Home() {
 
   // ─── Service Worker registration ─────────────────────────────────────────────
 
+  const [swReady, setSwReady] = useState(false);
+  const swReadyRef = useRef(false);
+
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/iptv/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/iptv/sw.js').then(reg => {
+        if (reg.active) {
+          setSwReady(true);
+          swReadyRef.current = true;
+        } else {
+          reg.addEventListener('updatefound', () => {
+            const sw = reg.installing || reg.waiting;
+            if (sw) {
+              sw.addEventListener('statechange', () => {
+                if (sw.state === 'activated') {
+                  setSwReady(true);
+                  swReadyRef.current = true;
+                }
+              });
+            }
+          });
+        }
+      }).catch(() => {});
     }
   }, []);
 
@@ -228,11 +248,14 @@ export default function Home() {
     const urls = [channel.url, ...(channel.fallbackUrls || [])];
     const currentUrl = urls[tryIndex] || urls[0];
     const isHttp = currentUrl.startsWith('http:');
-    const streamUrl = isHttp ? toProxyUrl(currentUrl) : currentUrl;
     const hasNativeHls = video.canPlayType('application/vnd.apple.mpegurl');
 
+    // HTTP streams on HTTPS pages: use SW proxy when ready, fallback to native HLS (Safari)
+    const streamUrl = isHttp && swReadyRef.current ? toProxyUrl(currentUrl) : currentUrl;
+
     if (streamUrl.includes('.m3u8')) {
-      if (Hls.isSupported()) {
+      // Don't use HLS.js for HTTP URLs when SW proxy isn't ready (active mixed content)
+      if (Hls.isSupported() && (!isHttp || swReadyRef.current)) {
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
@@ -269,9 +292,16 @@ export default function Home() {
       } else if (hasNativeHls) {
         video.src = streamUrl;
         video.play().catch(() => {});
+      } else if (isHttp && !swReadyRef.current) {
+        setError('HTTP stream blocked. Please refresh the page and try again (proxy initializing).');
+        setIsLoading(false);
       }
-    } else {
+    } else if (isHttp && !swReadyRef.current) {
+      // SW not ready: try native playback (passive mixed content allowed for media)
       video.src = currentUrl;
+      video.play().catch(() => {});
+    } else {
+      video.src = streamUrl;
       video.play().catch(() => {});
     }
 
