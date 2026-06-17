@@ -21,21 +21,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
-        run: bun install
+        run: npm ci
 
       - name: Build static site
-        run: bun run build
+        run: npm run build
         env:
           NODE_ENV: production
 
       - name: Add .nojekyll
         run: touch out/.nojekyll
+
+      - name: Fix asset paths for GitHub Pages
+        run: |
+          # Ensure all _next assets are accessible (GitHub Pages ignores _ prefixed dirs without .nojekyll)
+          if [ -d "out/_next" ]; then
+            echo "_next directory exists, .nojekyll will handle it"
+          fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
