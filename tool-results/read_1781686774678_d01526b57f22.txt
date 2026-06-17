@@ -1,0 +1,820 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useRef, useCallback } from 'react';
+     4→import Hls from 'hls.js';
+     5→import {
+     6→  Channel, defaultChannels, categories, Category,
+     7→} from '@/lib/channels';
+     8→
+     9→// ─── Icons (inline SVGs to avoid extra deps) ──────────────────────────────────
+    10→
+    11→function IconMenu(props: React.SVGProps<SVGSVGElement>) {
+    12→  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>;
+    13→}
+    14→function IconSearch(props: React.SVGProps<SVGSVGElement>) {
+    15→  return <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>;
+    16→}
+    17→function IconStar(props: React.SVGProps<SVGSVGElement>) {
+    18→  return <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+    19→}
+    20→function IconPlay(props: React.SVGProps<SVGSVGElement>) {
+    21→  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="6 3 20 12 6 21 6 3"/></svg>;
+    22→}
+    23→function IconPause(props: React.SVGProps<SVGSVGElement>) {
+    24→  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="4" height="16" x="6" y="4"/><rect width="4" height="16" x="14" y="4"/></svg>;
+    25→}
+    26→function IconSkipBack(props: React.SVGProps<SVGSVGElement>) {
+    27→  return <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" x2="5" y1="19" y2="5"/></svg>;
+    28→}
+    29→function IconSkipForward(props: React.SVGProps<SVGSVGElement>) {
+    30→  return <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" x2="19" y1="5" y2="19"/></svg>;
+    31→}
+    32→function IconVolume2(props: React.SVGProps<SVGSVGElement>) {
+    33→  return <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>;
+    34→}
+    35→function IconVolumeX(props: React.SVGProps<SVGSVGElement>) {
+    36→  return <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>;
+    37→}
+    38→function IconMaximize(props: React.SVGProps<SVGSVGElement>) {
+    39→  return <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>;
+    40→}
+    41→function IconMinimize(props: React.SVGProps<SVGSVGElement>) {
+    42→  return <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>;
+    43→}
+    44→function IconX(props: React.SVGProps<SVGSVGElement>) {
+    45→  return <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
+    46→}
+    47→function IconSun(props: React.SVGProps<SVGSVGElement>) {
+    48→  return <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>;
+    49→}
+    50→function IconMoon(props: React.SVGProps<SVGSVGElement>) {
+    51→  return <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>;
+    52→}
+    53→function IconUpload(props: React.SVGProps<SVGSVGElement>) {
+    54→  return <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>;
+    55→}
+    56→function IconPiP(props: React.SVGProps<SVGSVGElement>) {
+    57→  return <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="20" height="14" x="2" y="3" rx="2"/><rect width="8" height="5" x="12" y="10" rx="1"/></svg>;
+    58→}
+    59→function IconRefresh(props: React.SVGProps<SVGSVGElement>) {
+    60→  return <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>;
+    61→}
+    62→function IconTv(props: React.SVGProps<SVGSVGElement>) {
+    63→  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="20" height="15" x="2" y="7" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>;
+    64→}
+    65→function IconWifi(props: React.SVGProps<SVGSVGElement>) {
+    66→  return <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" x2="12.01" y1="20" y2="20"/></svg>;
+    67→}
+    68→function IconWifiOff(props: React.SVGProps<SVGSVGElement>) {
+    69→  return <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="2" x2="22" y1="2" y2="22"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 4.17-2.64"/><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"/><path d="M16.85 11.25a10 10 0 0 1 2.22 2.68"/><path d="M5.26 17.89a10 10 0 0 1 1.64-2.11"/><circle cx="12" cy="20" r="1"/></svg>;
+    70→}
+    71→function IconAlertCircle(props: React.SVGProps<SVGSVGElement>) {
+    72→  return <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>;
+    73→}
+    74→
+    75→// ─── M3U Parser ────────────────────────────────────────────────────────────────
+    76→
+    77→function parseM3U(text: string): Channel[] {
+    78→  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    79→  const parsed: Channel[] = [];
+    80→  let current: Partial<Channel> | null = null;
+    81→  let nextId = 1000;
+    82→
+    83→  for (const line of lines) {
+    84→    if (line.startsWith('#EXTINF:')) {
+    85→      current = {};
+    86→      const logoMatch = line.match(/tvg-logo="([^"]*)"/);
+    87→      const groupMatch = line.match(/group-title="([^"]*)"/);
+    88→      const nameMatch = line.match(/,(.+)$/);
+    89→      if (logoMatch) current.logo = logoMatch[1];
+    90→      if (groupMatch) current.category = groupMatch[1];
+    91→      if (nameMatch) current.name = nameMatch[1].trim();
+    92→    } else if (line.startsWith('#')) {
+    93→      continue;
+    94→    } else if (current) {
+    95→      current.url = line;
+    96→      current.id = nextId++;
+    97→      if (!current.category) current.category = 'Imported';
+    98→      if (!current.name) current.name = `Channel ${current.id}`;
+    99→      if (!current.logo) current.logo = '';
+   100→      parsed.push(current as Channel);
+   101→      current = null;
+   102→    }
+   103→  }
+   104→  return parsed;
+   105→}
+   106→
+   107→// ─── Main Component ────────────────────────────────────────────────────────────
+   108→
+   109→export default function Home() {
+   110→  const [channels, setChannels] = useState<Channel[]>(defaultChannels);
+   111→  const [filteredChannels, setFilteredChannels] = useState<Channel[]>(defaultChannels);
+   112→  const [currentChannel, setCurrentChannel] = useState<Channel | null>(null);
+   113→  const [sidebarOpen, setSidebarOpen] = useState(true);
+   114→  const [searchQuery, setSearchQuery] = useState('');
+   115→  const [activeCategory, setActiveCategory] = useState<Category>('All');
+   116→  const [favorites, setFavorites] = useState<number[]>(() => {
+   117→    if (typeof window === 'undefined') return [];
+   118→    const saved = localStorage.getItem('iptv_favorites');
+   119→    return saved ? JSON.parse(saved) : [];
+   120→  });
+   121→  const [volume, setVolume] = useState(() => {
+   122→    if (typeof window === 'undefined') return 1;
+   123→    const saved = localStorage.getItem('iptv_volume');
+   124→    return saved ? parseFloat(saved) : 1;
+   125→  });
+   126→  const [muted, setMuted] = useState(false);
+   127→  const [isPlaying, setIsPlaying] = useState(false);
+   128→  const [isLoading, setIsLoading] = useState(false);
+   129→  const [error, setError] = useState<string | null>(null);
+   130→  const [showControls, setShowControls] = useState(true);
+   131→  const [showOSD, setShowOSD] = useState(false);
+   132→  const [isDark, setIsDark] = useState(true);
+   133→  const [isOnline, setIsOnline] = useState(true);
+   134→  const [isPiP, setIsPiP] = useState(false);
+   135→  const [isFullscreen, setIsFullscreen] = useState(false);
+   136→  const [clock, setClock] = useState('');
+   137→  const [showImport, setShowImport] = useState(false);
+   138→  const [showHelp, setShowHelp] = useState(false);
+   139→
+   140→  const videoRef = useRef<HTMLVideoElement>(null);
+   141→  const containerRef = useRef<HTMLDivElement>(null);
+   142→  const hlsRef = useRef<Hls | null>(null);
+   143→  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   144→  const osdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   145→  const fileInputRef = useRef<HTMLInputElement>(null);
+   146→  const channelListRef = useRef<HTMLDivElement>(null);
+   147→
+   148→  // ─── Dark mode ───────────────────────────────────────────────────────────────
+   149→
+   150→  useEffect(() => {
+   151→    document.documentElement.classList.toggle('dark', isDark);
+   152→  }, [isDark]);
+   153→
+   154→  // ─── Clock ───────────────────────────────────────────────────────────────────
+   155→
+   156→  useEffect(() => {
+   157→    const update = () => {
+   158→      const now = new Date();
+   159→      setClock(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+   160→    };
+   161→    update();
+   162→    const interval = setInterval(update, 1000);
+   163→    return () => clearInterval(interval);
+   164→  }, []);
+   165→
+   166→  // ─── Online/Offline ──────────────────────────────────────────────────────────
+   167→
+   168→  useEffect(() => {
+   169→    const on = () => setIsOnline(true);
+   170→    const off = () => setIsOnline(false);
+   171→    window.addEventListener('online', on);
+   172→    window.addEventListener('offline', off);
+   173→    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+   174→  }, []);
+   175→
+   176→  // ─── Filter channels ────────────────────────────────────────────────────────
+   177→
+   178→  useEffect(() => {
+   179→    const filtered = channels.filter(channel => {
+   180→      const matchesSearch = channel.name.toLowerCase().includes(searchQuery.toLowerCase());
+   181→      let matchesCategory = activeCategory === 'All';
+   182→      if (activeCategory === 'Favorites') {
+   183→        matchesCategory = favorites.includes(channel.id);
+   184→      } else {
+   185→        matchesCategory = channel.category === activeCategory;
+   186→      }
+   187→      return matchesSearch && matchesCategory;
+   188→    });
+   189→    setFilteredChannels(filtered);
+   190→  }, [channels, searchQuery, activeCategory, favorites]);
+   191→
+   192→  // ─── Play channel ────────────────────────────────────────────────────────────
+   193→
+   194→  const playChannel = useCallback((channel: Channel) => {
+   195→    if (!videoRef.current || !channel.url) return;
+   196→    setCurrentChannel(channel);
+   197→    setIsLoading(true);
+   198→    setError(null);
+   199→    setShowOSD(true);
+   200→    localStorage.setItem('iptv_last_channel', String(channel.id));
+   201→
+   202→    if (hlsRef.current) {
+   203→      hlsRef.current.destroy();
+   204→      hlsRef.current = null;
+   205→    }
+   206→
+   207→    const video = videoRef.current;
+   208→
+   209→    if (channel.url.includes('.m3u8')) {
+   210→      if (Hls.isSupported()) {
+   211→        const hls = new Hls({
+   212→          enableWorker: true,
+   213→          lowLatencyMode: true,
+   214→          maxBufferLength: 30,
+   215→          maxMaxBufferLength: 60,
+   216→        });
+   217→        hlsRef.current = hls;
+   218→        hls.loadSource(channel.url);
+   219→        hls.attachMedia(video);
+   220→        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+   221→          video.play().catch(() => {});
+   222→        });
+   223→        hls.on(Hls.Events.ERROR, (_event, data) => {
+   224→          if (data.fatal) {
+   225→            switch (data.type) {
+   226→              case Hls.ErrorTypes.NETWORK_ERROR:
+   227→                hls.startLoad();
+   228→                break;
+   229→              case Hls.ErrorTypes.MEDIA_ERROR:
+   230→                hls.recoverMediaError();
+   231→                break;
+   232→              default:
+   233→                setError(`Stream load failed: ${data.type}`);
+   234→                setIsLoading(false);
+   235→                break;
+   236→            }
+   237→          }
+   238→        });
+   239→      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+   240→        video.src = channel.url;
+   241→        video.play().catch(() => {});
+   242→      }
+   243→    } else {
+   244→      video.src = channel.url;
+   245→      video.play().catch(() => {});
+   246→    }
+   247→
+   248→    if (osdTimeoutRef.current) clearTimeout(osdTimeoutRef.current);
+   249→    osdTimeoutRef.current = setTimeout(() => setShowOSD(false), 3000);
+   250→  }, []);
+   251→
+   252→  // ─── Video events ────────────────────────────────────────────────────────────
+   253→
+   254→  useEffect(() => {
+   255→    const video = videoRef.current;
+   256→    if (!video) return;
+   257→    const handlers: Record<string, () => void> = {
+   258→      play: () => setIsPlaying(true),
+   259→      pause: () => setIsPlaying(false),
+   260→      canplay: () => setIsLoading(false),
+   261→      waiting: () => setIsLoading(true),
+   262→      playing: () => setIsLoading(false),
+   263→      error: () => { setError('Stream playback failed'); setIsLoading(false); },
+   264→    };
+   265→    Object.entries(handlers).forEach(([event, handler]) => video.addEventListener(event, handler));
+   266→    return () => { Object.entries(handlers).forEach(([event, handler]) => video.removeEventListener(event, handler)); };
+   267→  }, []);
+   268→
+   269→  // ─── Volume sync ────────────────────────────────────────────────────────────
+   270→
+   271→  useEffect(() => {
+   272→    if (videoRef.current) {
+   273→      videoRef.current.volume = volume;
+   274→      videoRef.current.muted = muted;
+   275→    }
+   276→    localStorage.setItem('iptv_volume', String(volume));
+   277→  }, [volume, muted]);
+   278→
+   279→  // ─── Auto-play last channel ─────────────────────────────────────────────────
+   280→
+   281→  useEffect(() => {
+   282→    const lastId = localStorage.getItem('iptv_last_channel');
+   283→    if (lastId) {
+   284→      const ch = channels.find(c => c.id === parseInt(lastId, 10));
+   285→      if (ch) playChannel(ch);
+   286→    }
+   287→  }, [channels, playChannel]);
+   288→
+   289→  // ─── Toggle favorite ────────────────────────────────────────────────────────
+   290→
+   291→  const toggleFavorite = useCallback((channelId: number, e: React.MouseEvent) => {
+   292→    e.stopPropagation();
+   293→    setFavorites(prev => {
+   294→      const updated = prev.includes(channelId) ? prev.filter(id => id !== channelId) : [...prev, channelId];
+   295→      localStorage.setItem('iptv_favorites', JSON.stringify(updated));
+   296→      return updated;
+   297→    });
+   298→  }, []);
+   299→
+   300→  // ─── Prev/Next ──────────────────────────────────────────────────────────────
+   301→
+   302→  const prevChannel = useCallback(() => {
+   303→    if (!currentChannel) return;
+   304→    const idx = filteredChannels.findIndex(c => c.id === currentChannel.id);
+   305→    if (idx > 0) playChannel(filteredChannels[idx - 1]);
+   306→    else if (filteredChannels.length > 0) playChannel(filteredChannels[filteredChannels.length - 1]);
+   307→  }, [currentChannel, filteredChannels, playChannel]);
+   308→
+   309→  const nextChannel = useCallback(() => {
+   310→    if (!currentChannel) return;
+   311→    const idx = filteredChannels.findIndex(c => c.id === currentChannel.id);
+   312→    if (idx < filteredChannels.length - 1) playChannel(filteredChannels[idx + 1]);
+   313→    else if (filteredChannels.length > 0) playChannel(filteredChannels[0]);
+   314→  }, [currentChannel, filteredChannels, playChannel]);
+   315→
+   316→  const retryChannel = useCallback(() => {
+   317→    if (currentChannel) playChannel(currentChannel);
+   318→  }, [currentChannel, playChannel]);
+   319→
+   320→  // ─── Fullscreen ─────────────────────────────────────────────────────────────
+   321→
+   322→  const toggleFullscreen = useCallback(() => {
+   323→    if (!containerRef.current) return;
+   324→    if (document.fullscreenElement) {
+   325→      document.exitFullscreen();
+   326→    } else {
+   327→      containerRef.current.requestFullscreen();
+   328→    }
+   329→  }, []);
+   330→
+   331→  useEffect(() => {
+   332→    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+   333→    document.addEventListener('fullscreenchange', handler);
+   334→    return () => document.removeEventListener('fullscreenchange', handler);
+   335→  }, []);
+   336→
+   337→  // ─── PiP ────────────────────────────────────────────────────────────────────
+   338→
+   339→  const togglePiP = useCallback(async () => {
+   340→    const video = videoRef.current;
+   341→    if (!video) return;
+   342→    try {
+   343→      if (document.pictureInPictureElement) {
+   344→        await document.exitPictureInPicture();
+   345→        setIsPiP(false);
+   346→      } else {
+   347→        await video.requestPictureInPicture();
+   348→        setIsPiP(true);
+   349→      }
+   350→    } catch { /* PiP not supported */ }
+   351→  }, []);
+   352→
+   353→  // ─── Keyboard shortcuts ────────────────────────────────────────────────────
+   354→
+   355→  useEffect(() => {
+   356→    const handleKeyDown = (e: KeyboardEvent) => {
+   357→      if (showHelp || showImport) {
+   358→        if (e.key === 'Escape') { setShowHelp(false); setShowImport(false); }
+   359→        return;
+   360→      }
+   361→      if (e.target instanceof HTMLInputElement) return;
+   362→      switch (e.key) {
+   363→        case ' ':
+   364→          e.preventDefault();
+   365→          if (videoRef.current) videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause();
+   366→          break;
+   367→        case 'm': case 'M': setMuted(p => !p); break;
+   368→        case 'f': case 'F': toggleFullscreen(); break;
+   369→        case 'ArrowUp': e.preventDefault(); setVolume(v => Math.min(1, v + 0.1)); break;
+   370→        case 'ArrowDown': e.preventDefault(); setVolume(v => Math.max(0, v - 0.1)); break;
+   371→        case 'ArrowLeft': if (!sidebarOpen && videoRef.current) videoRef.current.currentTime -= 10; break;
+   372→        case 'ArrowRight': if (!sidebarOpen && videoRef.current) videoRef.current.currentTime += 10; break;
+   373→        case 'p': case 'P': prevChannel(); break;
+   374→        case 'n': case 'N': nextChannel(); break;
+   375→        case 'r': case 'R': retryChannel(); break;
+   376→        case 'Escape': setSidebarOpen(false); break;
+   377→        case 'h': case 'H': setShowHelp(p => !p); break;
+   378→      }
+   379→    };
+   380→    window.addEventListener('keydown', handleKeyDown);
+   381→    return () => window.removeEventListener('keydown', handleKeyDown);
+   382→  }, [showHelp, showImport, sidebarOpen, toggleFullscreen, prevChannel, nextChannel, retryChannel]);
+   383→
+   384→  // ─── Auto-hide controls ────────────────────────────────────────────────────
+   385→
+   386→  useEffect(() => {
+   387→    const handleMouseMove = () => {
+   388→      setShowControls(true);
+   389→      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+   390→      controlsTimeoutRef.current = setTimeout(() => {
+   391→        if (isPlaying && !sidebarOpen) setShowControls(false);
+   392→      }, 3000);
+   393→    };
+   394→    window.addEventListener('mousemove', handleMouseMove);
+   395→    return () => { window.removeEventListener('mousemove', handleMouseMove); if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
+   396→  }, [isPlaying, sidebarOpen]);
+   397→
+   398→  // ─── M3U Import ─────────────────────────────────────────────────────────────
+   399→
+   400→  const handleM3UImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+   401→    const file = e.target.files?.[0];
+   402→    if (!file) return;
+   403→    const reader = new FileReader();
+   404→    reader.onload = (ev) => {
+   405→      const text = ev.target?.result as string;
+   406→      const imported = parseM3U(text);
+   407→      if (imported.length > 0) {
+   408→        setChannels(prev => [...prev, ...imported]);
+   409→      }
+   410→    };
+   411→    reader.readAsText(file);
+   412→    setShowImport(false);
+   413→    e.target.value = '';
+   414→  }, []);
+   415→
+   416→  // ─── Category icon map ──────────────────────────────────────────────────────
+   417→
+   418→  const getCategoryIcon = (cat: string) => {
+   419→    const map: Record<string, string> = {
+   420→      'Bangla News': '📰', 'Bangla TV': '📺', 'Indian': '🇮🇳',
+   421→      'Sports': '⚽', 'Music': '🎵', 'International': '🌍',
+   422→      'Kids': '👶', 'Religious': '🕌', 'Test': '🧪', 'All': '🗂️', 'Favorites': '⭐',
+   423→    };
+   424→    return map[cat] || '📺';
+   425→  };
+   426→
+   427→  const getCategoryCount = (cat: string) => {
+   428→    if (cat === 'All') return channels.length;
+   429→    if (cat === 'Favorites') return favorites.length;
+   430→    return channels.filter(c => c.category === cat).length;
+   431→  };
+   432→
+   433→  // ─── Render ──────────────────────────────────────────────────────────────────
+   434→
+   435→  return (
+   436→    <div
+   437→      ref={containerRef}
+   438→      className="relative w-full h-screen overflow-hidden bg-black select-none"
+   439→      style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
+   440→    >
+   441→      {/* Video */}
+   442→      <video
+   443→        ref={videoRef}
+   444→        className="absolute inset-0 w-full h-full object-contain bg-black"
+   445→        playsInline
+   446→      />
+   447→
+   448→      {/* Loading Spinner */}
+   449→      {isLoading && (
+   450→        <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/30">
+   451→          <div className="w-12 h-12 border-4 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+   452→        </div>
+   453→      )}
+   454→
+   455→      {/* Error Overlay */}
+   456→      {error && (
+   457→        <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/60 gap-4">
+   458→          <IconAlertCircle className="text-red-400" />
+   459→          <p className="text-red-300 text-lg font-medium">{error}</p>
+   460→          <button
+   461→            onClick={retryChannel}
+   462→            className="flex items-center gap-2 px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors text-sm font-medium"
+   463→          >
+   464→            <IconRefresh /> Retry
+   465→          </button>
+   466→        </div>
+   467→      )}
+   468→
+   469→      {/* OSD */}
+   470→      {showOSD && currentChannel && (
+   471→        <div className="absolute top-16 left-4 z-30 flex items-center gap-3 bg-black/70 backdrop-blur-md rounded-xl px-4 py-3 border border-white/10 transition-opacity duration-500">
+   472→          {currentChannel.logo && (
+   473→            <img src={currentChannel.logo} alt="" className="w-10 h-10 object-contain rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+   474→          )}
+   475→          <div>
+   476→            <p className="text-white font-semibold text-sm">{currentChannel.name}</p>
+   477→            <p className="text-cyan-300 text-xs">{currentChannel.category}</p>
+   478→          </div>
+   479→        </div>
+   480→      )}
+   481→
+   482→      {/* No channel placeholder */}
+   483→      {!currentChannel && !isLoading && !error && (
+   484→        <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+   485→          <IconTv className="text-white/10 mb-4" width={80} height={80} />
+   486→          <p className="text-white/20 text-xl font-medium">Select a channel to watch</p>
+   487→          <p className="text-white/10 text-sm mt-2">Press H for keyboard shortcuts</p>
+   488→        </div>
+   489→      )}
+   490→
+   491→      {/* ─── Top Bar ──────────────────────────────────────────────────────────── */}
+   492→      <div
+   493→        className={`absolute top-0 left-0 right-0 z-30 transition-all duration-300 ${
+   494→          showControls || !isPlaying ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
+   495→        }`}
+   496→      >
+   497→        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/80 to-transparent">
+   498→          <div className="flex items-center gap-3">
+   499→            <button
+   500→              onClick={() => setSidebarOpen(!sidebarOpen)}
+   501→              className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white"
+   502→              aria-label="Toggle sidebar"
+   503→            >
+   504→              <IconMenu />
+   505→            </button>
+   506→            <div className="flex items-center gap-2">
+   507→              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500 flex items-center justify-center">
+   508→                <IconTv width={16} height={16} className="text-white" />
+   509→              </div>
+   510→              <h1 className="text-white font-bold text-lg tracking-tight hidden sm:block">
+   511→                StreamVault <span className="text-cyan-400">TV</span>
+   512→              </h1>
+   513→            </div>
+   514→          </div>
+   515→          <div className="flex items-center gap-2">
+   516→            {isOnline ? (
+   517→              <span className="flex items-center gap-1 text-emerald-400 text-xs font-medium"><IconWifi /> Online</span>
+   518→            ) : (
+   519→              <span className="flex items-center gap-1 text-red-400 text-xs font-medium"><IconWifiOff /> Offline</span>
+   520→            )}
+   521→            <span className="text-white/60 text-sm font-mono ml-2">{clock}</span>
+   522→            <button onClick={() => setIsDark(p => !p)} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white" aria-label="Toggle theme">
+   523→              {isDark ? <IconSun /> : <IconMoon />}
+   524→            </button>
+   525→            <button onClick={() => setShowImport(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white" aria-label="Import M3U">
+   526→              <IconUpload />
+   527→            </button>
+   528→            <button onClick={() => setShowHelp(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white" aria-label="Help">
+   529→              ?
+   530→            </button>
+   531→          </div>
+   532→        </div>
+   533→      </div>
+   534→
+   535→      {/* ─── Bottom Controls ────────────────────────────────────────────────── */}
+   536→      <div
+   537→        className={`absolute bottom-0 left-0 right-0 z-30 transition-all duration-300 ${
+   538→          showControls || !isPlaying ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+   539→        }`}
+   540→      >
+   541→        <div className="bg-gradient-to-t from-black/80 to-transparent px-4 py-3">
+   542→          <div className="flex items-center justify-between gap-2">
+   543→            <div className="flex items-center gap-1">
+   544→              <button onClick={prevChannel} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/80 hover:text-white" aria-label="Previous channel">
+   545→                <IconSkipBack />
+   546→              </button>
+   547→              <button
+   548→                onClick={() => { if (videoRef.current) videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause(); }}
+   549→                className="p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors text-white"
+   550→                aria-label="Play/Pause"
+   551→              >
+   552→                {isPlaying ? <IconPause /> : <IconPlay />}
+   553→              </button>
+   554→              <button onClick={nextChannel} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/80 hover:text-white" aria-label="Next channel">
+   555→                <IconSkipForward />
+   556→              </button>
+   557→            </div>
+   558→
+   559→            <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
+   560→              {currentChannel?.logo && (
+   561→                <img src={currentChannel.logo} alt="" className="w-8 h-8 object-contain rounded shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+   562→              )}
+   563→              <div className="text-center min-w-0">
+   564→                <p className="text-white font-medium text-sm truncate">{currentChannel?.name || 'No Channel'}</p>
+   565→                <p className="text-cyan-300 text-xs">{currentChannel?.category || ''}</p>
+   566→              </div>
+   567→              {currentChannel && (
+   568→                <button
+   569→                  onClick={(e) => toggleFavorite(currentChannel.id, e)}
+   570→                  className={`p-1.5 rounded-lg hover:bg-white/10 transition-colors shrink-0 ${
+   571→                    favorites.includes(currentChannel.id) ? 'text-yellow-400' : 'text-white/40 hover:text-white/70'
+   572→                  }`}
+   573→                  aria-label="Toggle favorite"
+   574→                >
+   575→                  <IconStar />
+   576→                </button>
+   577→              )}
+   578→            </div>
+   579→
+   580→            <div className="flex items-center gap-2">
+   581→              <button onClick={() => setMuted(p => !p)} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/80 hover:text-white" aria-label="Toggle mute">
+   582→                {muted || volume === 0 ? <IconVolumeX /> : <IconVolume2 />}
+   583→              </button>
+   584→              <input
+   585→                type="range"
+   586→                min="0"
+   587→                max="1"
+   588→                step="0.05"
+   589→                value={muted ? 0 : volume}
+   590→                onChange={(e) => setVolume(parseFloat(e.target.value))}
+   591→                className="w-20 h-1 accent-cyan-400 cursor-pointer"
+   592→                aria-label="Volume"
+   593→              />
+   594→              <button onClick={togglePiP} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/80 hover:text-white" aria-label="Picture in Picture">
+   595→                <IconPiP />
+   596→              </button>
+   597→              <button onClick={toggleFullscreen} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/80 hover:text-white" aria-label="Fullscreen">
+   598→                {isFullscreen ? <IconMinimize /> : <IconMaximize />}
+   599→              </button>
+   600→            </div>
+   601→          </div>
+   602→        </div>
+   603→      </div>
+   604→
+   605→      {/* ─── Sidebar ──────────────────────────────────────────────────────── */}
+   606→      <div
+   607→        className={`absolute top-0 left-0 bottom-0 z-40 w-80 max-w-[85vw] transition-transform duration-300 ease-out ${
+   608→          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+   609→        }`}
+   610→      >
+   611→        <div className="h-full flex flex-col bg-gray-950/95 dark:bg-gray-950/95 backdrop-blur-xl border-r border-white/5">
+   612→          {/* Sidebar header */}
+   613→          <div className="flex items-center justify-between px-4 py-4 border-b border-white/5">
+   614→            <div className="flex items-center gap-2">
+   615→              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-teal-500 flex items-center justify-center">
+   616→                <IconTv width={16} height={16} className="text-white" />
+   617→              </div>
+   618→              <h2 className="text-white font-bold text-lg">Channels</h2>
+   619→              <span className="text-xs bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full font-medium">
+   620→                {filteredChannels.length}
+   621→              </span>
+   622→            </div>
+   623→            <button onClick={() => setSidebarOpen(false)} className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/60 hover:text-white">
+   624→              <IconX />
+   625→            </button>
+   626→          </div>
+   627→
+   628→          {/* Search */}
+   629→          <div className="px-3 py-2">
+   630→            <div className="relative">
+   631→              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+   632→              <input
+   633→                type="text"
+   634→                value={searchQuery}
+   635→                onChange={(e) => setSearchQuery(e.target.value)}
+   636→                placeholder="Search channels..."
+   637→                className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-cyan-400/50 focus:ring-1 focus:ring-cyan-400/30 transition-colors"
+   638→              />
+   639→            </div>
+   640→          </div>
+   641→
+   642→          {/* Categories */}
+   643→          <div className="px-3 py-1">
+   644→            <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
+   645→              {categories.map(cat => (
+   646→                <button
+   647→                  key={cat}
+   648→                  onClick={() => setActiveCategory(cat)}
+   649→                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+   650→                    activeCategory === cat
+   651→                      ? 'bg-cyan-500 text-white'
+   652→                      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80'
+   653→                  }`}
+   654→                >
+   655→                  <span>{getCategoryIcon(cat)}</span>
+   656→                  <span>{cat}</span>
+   657→                  <span className="text-[10px] opacity-60">({getCategoryCount(cat)})</span>
+   658→                </button>
+   659→              ))}
+   660→            </div>
+   661→          </div>
+   662→
+   663→          {/* Channel list */}
+   664→          <div ref={channelListRef} className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+   665→            {filteredChannels.length === 0 ? (
+   666→              <div className="flex flex-col items-center justify-center py-12 text-center">
+   667→                <IconTv className="text-white/10 mb-3" width={40} height={40} />
+   668→                <p className="text-white/30 text-sm font-medium">No channels found</p>
+   669→                <p className="text-white/15 text-xs mt-1">
+   670→                  {activeCategory === 'Favorites' ? 'Add channels to favorites by tapping the star' : 'Try a different search or category'}
+   671→                </p>
+   672→              </div>
+   673→            ) : (
+   674→              filteredChannels.map(channel => (
+   675→                <button
+   676→                  key={channel.id}
+   677→                  onClick={() => playChannel(channel)}
+   678→                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group ${
+   679→                    currentChannel?.id === channel.id
+   680→                      ? 'bg-cyan-500/15 border border-cyan-500/30'
+   681→                      : 'hover:bg-white/5 border border-transparent'
+   682→                  }`}
+   683→                >
+   684→                  <span className="text-xs text-white/20 font-mono w-6 text-right shrink-0">{channel.id}</span>
+   685→                  {channel.logo ? (
+   686→                    <img
+   687→                      src={channel.logo}
+   688→                      alt=""
+   689→                      className="w-9 h-9 object-contain rounded-lg bg-white/5 shrink-0"
+   690→                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden'); }}
+   691→                    />
+   692→                  ) : null}
+   693→                  {!channel.logo && (
+   694→                    <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-white/20 text-xs font-bold shrink-0">
+   695→                      {channel.name.charAt(0)}
+   696→                    </div>
+   697→                  )}
+   698→                  <div className="flex-1 min-w-0 text-left">
+   699→                    <p className={`text-sm font-medium truncate ${
+   700→                      currentChannel?.id === channel.id ? 'text-cyan-300' : 'text-white/80 group-hover:text-white'
+   701→                    }`}>
+   702→                      {channel.name}
+   703→                    </p>
+   704→                    <p className="text-xs text-white/30">{channel.category}</p>
+   705→                  </div>
+   706→                  <button
+   707→                    onClick={(e) => toggleFavorite(channel.id, e)}
+   708→                    className={`p-1.5 rounded-lg hover:bg-white/10 transition-colors shrink-0 ${
+   709→                      favorites.includes(channel.id) ? 'text-yellow-400' : 'text-white/20 hover:text-white/50'
+   710→                    }`}
+   711→                    aria-label={favorites.includes(channel.id) ? 'Remove from favorites' : 'Add to favorites'}
+   712→                  >
+   713→                    <IconStar />
+   714→                  </button>
+   715→                </button>
+   716→              ))
+   717→            )}
+   718→          </div>
+   719→
+   720→          {/* Sidebar footer */}
+   721→          <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between">
+   722→            <span className="text-white/20 text-xs">StreamVault TV v3.0</span>
+   723→            <span className="text-white/20 text-xs">{channels.length} channels</span>
+   724→          </div>
+   725→        </div>
+   726→      </div>
+   727→
+   728→      {/* Sidebar backdrop */}
+   729→      {sidebarOpen && (
+   730→        <div
+   731→          className="absolute inset-0 z-35 bg-black/40 md:bg-black/20"
+   732→          onClick={() => setSidebarOpen(false)}
+   733→        />
+   734→      )}
+   735→
+   736→      {/* ─── Import Modal ──────────────────────────────────────────────────── */}
+   737→      {showImport && (
+   738→        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setShowImport(false)}>
+   739→          <div className="bg-gray-900 border border-white/10 rounded-2xl p-6 w-96 max-w-[90vw] shadow-2xl" onClick={e => e.stopPropagation()}>
+   740→            <div className="flex items-center justify-between mb-4">
+   741→              <h3 className="text-white font-bold text-lg">Import Playlist</h3>
+   742→              <button onClick={() => setShowImport(false)} className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white"><IconX /></button>
+   743→            </div>
+   744→            <div className="space-y-4">
+   745→              <div>
+   746→                <p className="text-white/50 text-sm mb-2">Import channels from an M3U/M3U8 playlist file</p>
+   747→                <input
+   748→                  ref={fileInputRef}
+   749→                  type="file"
+   750→                  accept=".m3u,.m3u8,.txt"
+   751→                  onChange={handleM3UImport}
+   752→                  className="w-full text-sm text-white/50 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-cyan-500/20 file:text-cyan-300 hover:file:bg-cyan-500/30 file:cursor-pointer file:transition-colors"
+   753→                />
+   754→              </div>
+   755→              <div className="bg-white/5 rounded-xl p-3">
+   756→                <p className="text-white/30 text-xs">Supported formats: .m3u, .m3u8, .txt</p>
+   757→                <p className="text-white/30 text-xs mt-1">Imported channels will be added to your channel list</p>
+   758→              </div>
+   759→            </div>
+   760→          </div>
+   761→        </div>
+   762→      )}
+   763→
+   764→      {/* ─── Help Modal ────────────────────────────────────────────────────── */}
+   765→      {showHelp && (
+   766→        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setShowHelp(false)}>
+   767→          <div className="bg-gray-900 border border-white/10 rounded-2xl p-6 w-[480px] max-w-[90vw] max-h-[80vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+   768→            <div className="flex items-center justify-between mb-4">
+   769→              <h3 className="text-white font-bold text-lg">Keyboard Shortcuts</h3>
+   770→              <button onClick={() => setShowHelp(false)} className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white"><IconX /></button>
+   771→            </div>
+   772→            <div className="space-y-4">
+   773→              <div>
+   774→                <h4 className="text-cyan-400 font-semibold text-sm mb-2">Playback</h4>
+   775→                <div className="grid grid-cols-2 gap-2 text-sm">
+   776→                  {[
+   777→                    ['Space', 'Play / Pause'], ['M', 'Toggle mute'], ['F', 'Fullscreen'],
+   778→                    ['P', 'Previous channel'], ['N', 'Next channel'], ['R', 'Retry stream'],
+   779→                  ].map(([key, desc]) => (
+   780→                    <div key={key} className="flex items-center gap-2">
+   781→                      <kbd className="bg-white/10 text-white/70 px-2 py-1 rounded text-xs font-mono">{key}</kbd>
+   782→                      <span className="text-white/50 text-xs">{desc}</span>
+   783→                    </div>
+   784→                  ))}
+   785→                </div>
+   786→              </div>
+   787→              <div>
+   788→                <h4 className="text-cyan-400 font-semibold text-sm mb-2">Navigation</h4>
+   789→                <div className="grid grid-cols-2 gap-2 text-sm">
+   790→                  {[
+   791→                    ['Up/Down', 'Volume'], ['Left/Right', 'Seek 10s'],
+   792→                    ['Esc', 'Close sidebar'], ['H', 'Toggle help'],
+   793→                  ].map(([key, desc]) => (
+   794→                    <div key={key} className="flex items-center gap-2">
+   795→                      <kbd className="bg-white/10 text-white/70 px-2 py-1 rounded text-xs font-mono">{key}</kbd>
+   796→                      <span className="text-white/50 text-xs">{desc}</span>
+   797→                    </div>
+   798→                  ))}
+   799→                </div>
+   800→              </div>
+   801→              <div>
+   802→                <h4 className="text-cyan-400 font-semibold text-sm mb-2">Touch Gestures (Mobile)</h4>
+   803→                <div className="space-y-1 text-sm">
+   804→                  {[
+   805→                    'Swipe Left/Right: Next/Previous channel',
+   806→                    'Swipe Up/Down: Volume up/down',
+   807→                    'Double Tap: Toggle fullscreen',
+   808→                  ].map(desc => (
+   809→                    <p key={desc} className="text-white/50 text-xs">{desc}</p>
+   810→                  ))}
+   811→                </div>
+   812→              </div>
+   813→            </div>
+   814→          </div>
+   815→        </div>
+   816→      )}
+   817→    </div>
+   818→  );
+   819→}
+   820→
