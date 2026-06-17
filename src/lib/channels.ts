@@ -6,6 +6,7 @@ export interface Channel {
   category: string;
   language?: string;
   country?: string;
+  fallbackUrls?: string[];
 }
 
 export const defaultChannels: Channel[] = [
@@ -46,7 +47,7 @@ export const defaultChannels: Channel[] = [
   { id: 30, name: "News18 Bangla", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/News18_Bangla_logo.svg/200px-News18_Bangla_logo.svg.png", url: "https://amg01448-samsungin-news18bangla-samsungin-ad-qy.amagi.tv/ts-eu-w1-n2/playlist/amg01448-samsungin-news18bangla-samsungin/playlist.m3u8", category: "Indian", language: "Bengali", country: "India" },
 
   // ===== Sports =====
-  { id: 31, name: "T Sports", logo: "", url: "http://198.195.239.50:8095/tsports/tracks-v1a1/mono.m3u8", category: "Sports", language: "Bengali", country: "Bangladesh" },
+  { id: 31, name: "T Sports", logo: "", url: "http://198.195.239.50:8095/tsports/tracks-v1a1/mono.m3u8", fallbackUrls: ["http://113.21.231.219:789/Tsports/index.m3u8"], category: "Sports", language: "Bengali", country: "Bangladesh" },
   { id: 32, name: "DD Sports", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/DD_Sports_logo.svg/200px-DD_Sports_logo.svg.png", url: "https://d3qs3d2rkhfqrt.cloudfront.net/out/v1/b17adfe543354fdd8d189b110617cddd/index_3.m3u8", category: "Sports", language: "Hindi", country: "India" },
   { id: 33, name: "CazeTV - WC 2026", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Caze_TV_logo.svg/200px-Caze_TV_logo.svg.png", url: "https://dfr80qz435crc.cloudfront.net/MNOP/Amagi/Caze/Caze_TV_BR/Caze_TV.m3u8", category: "Sports", language: "Portuguese", country: "Brazil" },
   { id: 34, name: "beIN Sports XTRA", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/BeIN_Sports_Xtra_logo.svg/200px-BeIN_Sports_Xtra_logo.svg.png", url: "https://bein-xtra-bein.amagi.tv/playlist.m3u8", category: "Sports", language: "English", country: "USA" },

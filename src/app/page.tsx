@@ -127,6 +127,7 @@ export default function Home() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [streamTryCount, setStreamTryCount] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [showOSD, setShowOSD] = useState(false);
   const [isDark, setIsDark] = useState(true);
@@ -193,12 +194,13 @@ export default function Home() {
 
   // ─── Play channel ────────────────────────────────────────────────────────────
 
-  const playChannel = useCallback((channel: Channel) => {
+  const playChannel = useCallback((channel: Channel, tryIndex = 0) => {
     if (!videoRef.current || !channel.url) return;
     setCurrentChannel(channel);
     setIsLoading(true);
     setError(null);
     setShowOSD(true);
+    setStreamTryCount(tryIndex);
     localStorage.setItem('iptv_last_channel', String(channel.id));
 
     if (hlsRef.current) {
@@ -207,9 +209,24 @@ export default function Home() {
     }
 
     const video = videoRef.current;
+    const urls = [channel.url, ...(channel.fallbackUrls || [])];
+    const currentUrl = urls[tryIndex] || urls[0];
+    const isHttp = currentUrl.startsWith('http:');
+    const hasNativeHls = video.canPlayType('application/vnd.apple.mpegurl');
 
-    if (channel.url.includes('.m3u8')) {
-      if (Hls.isSupported()) {
+    // HTTP streams on HTTPS pages: HLS.js (fetch/XHR) is blocked as active mixed content.
+    // Use native HLS via video.src instead (passive mixed content, works in Safari/iOS).
+    // For browsers without native HLS, show a clear error.
+    if (currentUrl.includes('.m3u8')) {
+      if (isHttp) {
+        if (hasNativeHls) {
+          video.src = currentUrl;
+          video.play().catch(() => {});
+        } else {
+          setError('This HTTP stream is blocked by your browser on this HTTPS page. Try using Safari or a VPN with an HTTPS stream source.');
+          setIsLoading(false);
+        }
+      } else if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
@@ -217,7 +234,7 @@ export default function Home() {
           maxMaxBufferLength: 60,
         });
         hlsRef.current = hls;
-        hls.loadSource(channel.url);
+        hls.loadSource(currentUrl);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           video.play().catch(() => {});
@@ -226,7 +243,12 @@ export default function Home() {
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                hls.startLoad();
+                const nextTry = tryIndex + 1;
+                if (nextTry < urls.length) {
+                  playChannel(channel, nextTry);
+                } else {
+                  hls.startLoad();
+                }
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
                 hls.recoverMediaError();
@@ -238,12 +260,12 @@ export default function Home() {
             }
           }
         });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = channel.url;
+      } else if (hasNativeHls) {
+        video.src = currentUrl;
         video.play().catch(() => {});
       }
     } else {
-      video.src = channel.url;
+      video.src = currentUrl;
       video.play().catch(() => {});
     }
 
