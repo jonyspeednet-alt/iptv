@@ -1,0 +1,18 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\"># StreamVault TV\n\nA modern, beautiful IPTV player with a professional dark theme. Watch live TV channels from Bangladesh, India, Sports, Music, and more.\n\n## Features\n\n- **Modern UI/UX**: Professional teal/cyan theme with glass-morphism effects\n- **Responsive Design**: Works on mobile, tablet, and desktop\n- **Touch Gestures**: Swipe to change channels, adjust volume, double-tap for fullscreen\n- **Keyboard Shortcuts**: Full keyboard navigation support\n- **HLS Streaming**: Supports .m3u8 live streams via HLS.js\n- **PWA Ready**: Install on mobile as a standalone app\n- **Favorites**: Save your favorite channels for quick access\n- **Categories**: Browse channels by category (Bangla News, Bangla TV, Indian, Sports, Music, International)\n- **Local Storage**: Remembers your last channel, volume, and favorites\n\n## Keyboard Shortcuts\n\n| Key | Action |\n|-----|--------|\n| Space | Play/Pause |\n| M | Mute/Unmute |\n| F | Toggle Fullscreen |\n| S | Show/Hide Statistics |\n| 0-9 | Enter channel number |\n| Arrow Up/Down | Volume Up/Down |\n| Arrow Left/Right | Seek -10s/+10s |\n| Escape | Close sidebar |\n| H or ? | Show Help |\n| C | Open Settings |\n\n## Touch Gestures (Mobile)\n\n- **Swipe Left/Right**: Next/Previous channel\n- **Swipe Up/Down**: Volume up/down\n- **Double Tap**: Toggle fullscreen\n\n## Tech Stack\n\n- React 18 + TypeScript\n- Vite\n- Tailwind CSS\n- HLS.js for streaming\n- Lucide React for icons\n\n## Getting Started\n\n```bash\nnpm install\nnpm run dev\n```\n\n## Build for Production\n\n```bash\nnpm run build\n```\n\n## License\n\nMIT\n</pre></body></html>",
+    "title": "",
+    "url": "https://raw.githubusercontent.com/jonyspeednet-alt/iptv/main/README.md",
+    "usage": {
+      "tokens": 434
+    }
+  },
+  "meta": {
+    "usage": {
+      "tokens": 434
+    }
+  },
+  "status": 20000
+}
