@@ -192,6 +192,22 @@ export default function Home() {
     setFilteredChannels(filtered);
   }, [channels, searchQuery, activeCategory, favorites]);
 
+  // ─── Service Worker registration ─────────────────────────────────────────────
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/iptv/sw.js').catch(() => {});
+    }
+  }, []);
+
+  // ─── Proxy helper ────────────────────────────────────────────────────────────
+
+  const toProxyUrl = useCallback((url: string) => {
+    if (!url.startsWith('http:')) return url;
+    const u = new URL(url);
+    return `/iptv/proxy/${u.protocol.slice(0, -1)}/${u.host}${u.pathname}${u.search}`;
+  }, []);
+
   // ─── Play channel ────────────────────────────────────────────────────────────
 
   const playChannel = useCallback((channel: Channel, tryIndex = 0) => {
@@ -212,21 +228,11 @@ export default function Home() {
     const urls = [channel.url, ...(channel.fallbackUrls || [])];
     const currentUrl = urls[tryIndex] || urls[0];
     const isHttp = currentUrl.startsWith('http:');
+    const streamUrl = isHttp ? toProxyUrl(currentUrl) : currentUrl;
     const hasNativeHls = video.canPlayType('application/vnd.apple.mpegurl');
 
-    // HTTP streams on HTTPS pages: HLS.js (fetch/XHR) is blocked as active mixed content.
-    // Use native HLS via video.src instead (passive mixed content, works in Safari/iOS).
-    // For browsers without native HLS, show a clear error.
-    if (currentUrl.includes('.m3u8')) {
-      if (isHttp) {
-        if (hasNativeHls) {
-          video.src = currentUrl;
-          video.play().catch(() => {});
-        } else {
-          setError('This HTTP stream is blocked by your browser on this HTTPS page. Try using Safari or a VPN with an HTTPS stream source.');
-          setIsLoading(false);
-        }
-      } else if (Hls.isSupported()) {
+    if (streamUrl.includes('.m3u8')) {
+      if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
@@ -234,7 +240,7 @@ export default function Home() {
           maxMaxBufferLength: 60,
         });
         hlsRef.current = hls;
-        hls.loadSource(currentUrl);
+        hls.loadSource(streamUrl);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           video.play().catch(() => {});
@@ -261,7 +267,7 @@ export default function Home() {
           }
         });
       } else if (hasNativeHls) {
-        video.src = currentUrl;
+        video.src = streamUrl;
         video.play().catch(() => {});
       }
     } else {
