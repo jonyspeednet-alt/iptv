@@ -61,7 +61,7 @@ export const defaultChannels: Channel[] = [
   // ===== International =====
   { id: 40, name: "Al Jazeera", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/f/f2/Aljazeera_eng.svg/200px-Aljazeera_eng.svg.png", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1721/output/index.m3u8", category: "International", language: "English", country: "Qatar" },
   { id: 41, name: "TBN 24 USA", logo: "https://raw.githubusercontent.com/subirkumarpaul/Logo/main/TBN24.png", url: "http://cdn01.palki.tv/live/TBN24-M/index.m3u8", category: "International", language: "Bengali", country: "USA" },
-  { id: 42, name: "France 24", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/France_24_logo.svg/200px-France_24_logo.svg.png", url: "https://static.france.tv/hls/live/2022874/FTVios/france24/master.m3u8", category: "International", language: "English", country: "France" },
+  { id: 42, name: "France 24", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/France_24_logo.svg/200px-France_24_logo.svg.png", url: "https://live.france24.com/hls/live/2037218/F24_EN_HI_HLS/master_900.m3u8", category: "International", language: "English", country: "France" },
   { id: 43, name: "DW English", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Deutsche_Welle_symbol_2012.svg/200px-Deutsche_Welle_symbol_2012.svg.png", url: "https://dwamdstream104.akamaized.net/hls/live/2015530/dwstream104/index.m3u8", category: "International", language: "English", country: "Germany" },
 
   // ===== Kids =====
@@ -70,6 +70,18 @@ export const defaultChannels: Channel[] = [
   // ===== Religious =====
   { id: 45, name: "Peacetv Bangla", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/7/72/Peace_TV_Bangla_logo.svg/200px-Peace_TV_Bangla_logo.svg.png", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1727/output/index.m3u8", category: "Religious", language: "Bengali", country: "Bangladesh" },
   { id: 46, name: "Quran TV", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Saudi_Quran_TV_logo.svg/200px-Saudi_Quran_TV_logo.svg.png", url: "https://owrcovcrpy.gpcdn.net/bpk-tv/1730/output/index.m3u8", category: "Religious", language: "Arabic", country: "Saudi Arabia" },
+
+  // ===== New Bangla TV =====
+  { id: 49, name: "RTV", logo: "https://raw.githubusercontent.com/subirkumarpaul/Logo/main/RTV.png", url: "https://bozztv.com/rongo/rongo-RTV/index.m3u8", category: "Bangla TV", language: "Bengali", country: "Bangladesh" },
+  { id: 50, name: "Boishakhi TV", logo: "", url: "https://boishakhi.sonarbanglatv.com/boishakhi/boishakhitv/index.m3u8", category: "Bangla TV", language: "Bengali", country: "Bangladesh" },
+  { id: 51, name: "Ekushey TV", logo: "https://i.postimg.cc/C15wr1RW/Ekushey-Television-Logo-svg.png", url: "https://ekusheyserver.com/hls-live/livepkgr/_definst_/liveevent/livestream3.m3u8", category: "Bangla TV", language: "Bengali", country: "Bangladesh" },
+  { id: 52, name: "AAKASH AATH", logo: "", url: "https://cdn-4.pishow.tv/live/969/master.m3u8", category: "Bangla TV", language: "Bengali", country: "Bangladesh" },
+  { id: 53, name: "Asian TV", logo: "https://raw.githubusercontent.com/subirkumarpaul/Logo/main/Asian%20Tv.png", url: "https://mtlivestream.com/hls/asian/ytlive/index.m3u8", category: "Bangla TV", language: "Bengali", country: "Bangladesh" },
+  { id: 54, name: "Enter10 Bangla", logo: "https://upload.wikimedia.org/wikipedia/en/thumb/e/ea/Enterr10_Bangla.jpeg/200px-Enterr10_Bangla.jpeg", url: "https://amg01448-samsungin-enterr10bangla-samsungin-ad-gg.amagi.tv/playlist/amg01448-samsungin-enterr10bangla-samsungin/playlist.m3u8", category: "Bangla TV", language: "Bengali", country: "Bangladesh" },
+  { id: 55, name: "R Plus Gold", logo: "", url: "https://cdn-4.pishow.tv/live/1231/1231_1.m3u8", category: "Bangla TV", language: "Bengali", country: "Bangladesh" },
+  { id: 56, name: "Bangla Movies", logo: "", url: "https://live-stream.utkalbongo.com/hls/livebanglatvstream.m3u8", category: "Bangla TV", language: "Bengali", country: "Bangladesh" },
+  { id: 57, name: "Star Jalsha HD", logo: "https://i.postimg.cc/1tmcNHW3/Star-Jalsha-HD.jpg", url: "https://iptvcable.netlify.app/Altogether-007/Kolkata/StarJalsha.m3u8", category: "Indian", language: "Bengali", country: "India" },
+  { id: 58, name: "Colors Bangla HD", logo: "https://raw.githubusercontent.com/subirkumarpaul/Logo/main/Colors%20Bangla.png", url: "https://catchup.yuppcdn.net/amazonv2/36/preview/colorsbanglahd/master/chunklist.m3u8", category: "Indian", language: "Bengali", country: "India" },
 
   // ===== Test =====
   { id: 47, name: "Big Buck Bunny (Test)", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/220px-Big_buck_bunny_poster_big.jpg", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", category: "Test", language: "English", country: "International" },
