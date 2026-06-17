@@ -134,6 +134,7 @@ export default function Home() {
   const [isOnline, setIsOnline] = useState(true);
   const [isPiP, setIsPiP] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [clock, setClock] = useState('');
   const [showImport, setShowImport] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -308,6 +309,18 @@ export default function Home() {
     }
     localStorage.setItem('iptv_volume', String(volume));
   }, [volume, muted]);
+
+  // ─── Loading timeout (prevents infinite spinner on proxy/SW issues) ────────
+
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        setError('Stream is taking too long to load. Try refreshing the page or using a different channel.');
+        setIsLoading(false);
+      }, 20000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
 
   // ─── Auto-play last channel ─────────────────────────────────────────────────
 
