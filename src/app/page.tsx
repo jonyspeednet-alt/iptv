@@ -178,8 +178,10 @@ export default function Home() {
   useEffect(() => {
     const filtered = channels.filter(channel => {
       const matchesSearch = channel.name.toLowerCase().includes(searchQuery.toLowerCase());
-      let matchesCategory = activeCategory === 'All';
-      if (activeCategory === 'Favorites') {
+      let matchesCategory = false;
+      if (activeCategory === 'All') {
+        matchesCategory = true;
+      } else if (activeCategory === 'Favorites') {
         matchesCategory = favorites.includes(channel.id);
       } else {
         matchesCategory = channel.category === activeCategory;
